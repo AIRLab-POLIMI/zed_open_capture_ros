@@ -1,6 +1,6 @@
 #include "zed_open_capture_ros/zed_open_capture_wrapper.hpp"
 
-ZedOpenCaptureWrapper::ZedOpenCaptureWrapper() : cap_(nullptr) {
+ZedOpenCaptureWrapper::ZedOpenCaptureWrapper() : cap_(nullptr), nh("~") {
     int resolution, fps;
     nh.param("resolution", resolution, 1);
     video_params_.res = (sl_oc::video::RESOLUTION) resolution;
@@ -17,29 +17,52 @@ ZedOpenCaptureWrapper::ZedOpenCaptureWrapper() : cap_(nullptr) {
     capFramerate();
     ROS_INFO_STREAM("Parameters loaded");
 
-    image_transport::ImageTransport it(nh);
-    left_image_pub_ = it.advertise(camera_namespace+"/left/image", 1);
-    right_image_pub_ = it.advertise(camera_namespace+"/right/image", 1);
+    ros::NodeHandle nhh;
 
-    left_cam_info_pub_ = nh.advertise<sensor_msgs::CameraInfo>(camera_namespace+"/left/camera_info", 1);
-    right_cam_info_pub_ = nh.advertise<sensor_msgs::CameraInfo>(camera_namespace+"/right/camera_info", 1);
+    image_transport::ImageTransport it(nhh);
+    left_image_pub_ = it.advertise(camera_namespace + "/left/image", 1);
+    right_image_pub_ = it.advertise(camera_namespace + "/right/image", 1);
+
+    left_cam_info_pub_ = nhh.advertise<sensor_msgs::CameraInfo>(camera_namespace + "/left/camera_info", 1);
+    right_cam_info_pub_ = nhh.advertise<sensor_msgs::CameraInfo>(camera_namespace + "/right/camera_info", 1);
     ROS_INFO_STREAM("Topic initialised");
 }
 
 bool ZedOpenCaptureWrapper::initializeVideoCapture() {
     cap_ = new sl_oc::video::VideoCapture(video_params_);
-    if(!cap_->initializeVideo(device_id_))
-    {
-        ROS_ERROR_STREAM("Failed to open camera video capture");
-        return false;
+    if (serial_ == 0) {
+        if (!cap_->initializeVideo(device_id_)) {
+            ROS_ERROR_STREAM("Failed to open camera video capture");
+            return false;
+        }
+    } else {
+        bool success = false;
+        for (uint8_t id = 0; id < 64; id++) {
+            if (cap_->initializeVideo(id)) {
+                if (cap_->getSerialNumber() == serial_) {
+                    success = true;
+                    ROS_INFO_STREAM("Camera with SN"<<serial_<<" found");
+                    break;
+                }
+                else
+                {
+                    delete cap_;
+                    cap_ = new sl_oc::video::VideoCapture(video_params_);
+                }
+            }
+        }
+        if (!success) {
+            ROS_ERROR_STREAM("Failed to open camera video capture with the specified serial");
+            return false;
+        }
     }
+
     ROS_INFO_STREAM("Video capture initialised");
 
-    if(use_zed_config_ && !config_file_location_.empty()) {
+    if (use_zed_config_ && !config_file_location_.empty()) {
         if (serial_ == 0) {
             getZedCameraInfo(config_file_location_, cap_->getSerialNumber());
-        }
-        else {
+        } else {
             getZedCameraInfo(config_file_location_, serial_);
         }
 
@@ -79,12 +102,13 @@ void ZedOpenCaptureWrapper::capFramerate() {
     }
 }
 
-void ZedOpenCaptureWrapper::getZedCameraInfo(const std::string& config_file, int serial) {
+void ZedOpenCaptureWrapper::getZedCameraInfo(const std::string &config_file, int serial) {
     boost::property_tree::ptree pt;
     std::string serial_str = std::to_string(serial);
-    std::string conf_file = config_file+
-            "/SN"+serial_str.substr(serial_str.size() - 4)+
-            ".conf";
+    std::string conf_file = config_file +
+                            "/SN" + serial_str.substr(serial_str.size() - 4) +
+                            ".conf";
+    ROS_INFO_STREAM("Loaded "<<conf_file);
     boost::property_tree::ini_parser::read_ini(conf_file, pt);
     std::string left_str = "LEFT_CAM_";
     std::string right_str = "RIGHT_CAM_";
@@ -235,14 +259,12 @@ void ZedOpenCaptureWrapper::getZedCameraInfo(const std::string& config_file, int
 }
 
 void ZedOpenCaptureWrapper::spin() {
-    if (cap_ == nullptr)
-    {
+    if (cap_ == nullptr) {
         ROS_ERROR_STREAM("Video capture not initialised");
         return;
     }
-    ros::Rate loop_rate((int) video_params_.fps*1.5);
-    while (nh.ok())
-    {
+    ros::Rate loop_rate((int) video_params_.fps * 1.5);
+    while (nh.ok()) {
         const sl_oc::video::Frame frame = cap_->getLastFrame();
         cv::Mat frameYUV = cv::Mat(frame.height, frame.width, CV_8UC2, frame.data);
         cv::Mat frameBGR;

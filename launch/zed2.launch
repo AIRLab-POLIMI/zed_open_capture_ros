@@ -10,7 +10,7 @@
 	<!-- -1 opens the first available camera -->
 	<param name="device_id" value="-1"/>
 	<!-- 0 retreives the serial from the camera -->
-	<param name="serial" value="0"/>
+	<param name="serial" value="22892462"/>
 </node>
 
 </launch>

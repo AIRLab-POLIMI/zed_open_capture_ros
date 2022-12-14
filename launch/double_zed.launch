@@ -1,0 +1,31 @@
+<launch>
+<node pkg="zed_open_capture_ros" type="zed_node" name="zed2_node" output="screen" required="true">
+	<param name="resolution" value="1" />
+	<param name="frame_rate" value="30"/>
+	<param name="config_file_location" value="$(find zed_open_capture_ros)/conf"/>
+	<param name="left_frame_id" value="left_camera_frame"/>
+	<param name="right_frame_id" value="right_camera_frame"/>
+    <param name="camera_namespace" value="zed2"/>
+	<param name="use_zed_config" value="true"/>
+	<!-- -1 opens the first available camera -->
+	<param name="device_id" value="-1"/>
+	<!-- 0 retreives the serial from the camera -->
+	<!-- Specify the serial to open a specific camera -->
+	<param name="serial" value="22892462"/>
+</node>
+
+<node pkg="zed_open_capture_ros" type="zed_node" name="zed2i_node" output="screen" required="true">
+	<param name="resolution" value="1" />
+	<param name="frame_rate" value="30"/>
+	<param name="config_file_location" value="$(find zed_open_capture_ros)/conf"/>
+	<param name="left_frame_id" value="left_camera_frame"/>
+	<param name="right_frame_id" value="right_camera_frame"/>
+    <param name="camera_namespace" value="zed2i"/>
+	<param name="use_zed_config" value="true"/>
+	<!-- -1 opens the first available camera -->
+	<param name="device_id" value="-1"/>
+	<!-- 0 retreives the serial from the camera -->
+	<param name="serial" value="36513009"/>
+</node>
+
+</launch>
