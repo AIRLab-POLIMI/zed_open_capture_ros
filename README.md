@@ -13,6 +13,7 @@ catkin_make
 ```
 
 2. Add the calibration files.
+
 Calibration files can be downloaded from the Stereolabs website at <http://calib.stereolabs.com/?SN=XXXX>.
 Note: Replace XXXX with the last four digit of the serial number of your camera.
 
